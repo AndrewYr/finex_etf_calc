@@ -5,10 +5,24 @@ name = "pypi"
 
 [packages]
 fastapi = "*"
+celery = "*"
+alembic = "*"
+sqlalchemy = "*"
+config-loader = "*"
+uamqp = "*"
+numpy = "*"
+maturin = "*"
+lxml = "*"
 uvicorn = {version = "*", extras = ["standard"]}
+configloader = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.11"
 python_full_version = "3.11.4"
+
+[pipenv]
+allow_prereleases = true
