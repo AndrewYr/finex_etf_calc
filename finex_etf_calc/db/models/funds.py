@@ -1,24 +1,28 @@
+import typing as t
+from datetime import date
+
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from finex_etf_calc.db.models.currencies import Currencies
 
-from .base import Base
-
+from .base import Base, BasePrice
 
 FUNDS = 'tfunds'
-PRICES = 'tprices'
+PRICES_FUND = 'tprices_fund'
 DEALS = 'tdeals'
 
 
 class Funds(Base):
     __tablename__ = FUNDS
 
-    ticker = sa.Column(sa.String(4))
-    description = sa.Column(sa.String(256))
-    currencies_id = sa.Column(FUNDS, sa.BigInteger(), sa.ForeignKey(Currencies.id))
-    currencies = relationship(Currencies)
+    ticker: Mapped[str] = mapped_column(sa.String(4))
+    description: Mapped[str] = mapped_column(sa.String(256))
+
+    currencies: Mapped[t.List["Currencies"]] = relationship()
+    price: Mapped[t.List["PricesFund"]] = relationship()
+    deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds")
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'FundsSchema') -> int:
@@ -32,13 +36,10 @@ class Funds(Base):
             yield row.Funds
 
 
-class Prices(Base):
-    __tablename__ = PRICES
+class PricesFund(BasePrice):
+    __tablename__ = PRICES_FUND
 
-    funds_id = sa.Column(FUNDS, sa.BigInteger(), sa.ForeignKey(Funds.id))
-    funds = relationship(Funds)
-    price_datetime = sa.Column(sa.DateTime())
-    price = sa.Column(sa.Float())
+    parent_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id.__name__))
 
     @classmethod
     async def create(cls, session: AsyncSession, data: '') -> int:
@@ -52,11 +53,12 @@ class Prices(Base):
 class Deals(Base):
     __tablename__ = DEALS
 
-    funds_id = sa.Column(FUNDS, sa.BigInteger(), sa.ForeignKey(Funds.id))
-    funds = relationship(Funds)
-    amount = sa.Column(sa.Float())
-    deal_date = sa.Column(sa.DateTime())
-    count = sa.Column(sa.BigInteger())
+    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id.__name__))
+    funds: Mapped["Funds"] = relationship(back_populates="deals")
+
+    amount: Mapped[float] = mapped_column(sa.Float())
+    deal_date: Mapped[date] = mapped_column(sa.Date())
+    count: Mapped[int] = mapped_column(sa.BigInteger())
 
     @classmethod
     async def create(cls, session: AsyncSession, data: '') -> int:
