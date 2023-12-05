@@ -3,15 +3,16 @@ from datetime import date
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-
-from finex_etf_calc.db.models.currencies import Currencies
 
 from .base import Base, BasePrice
 
 FUNDS = 'tfunds'
 PRICES_FUND = 'tprices_fund'
 DEALS = 'tdeals'
+CURRENCIES = 'tcurrencies'
+PRICES_CURRENCIES = 'tprices_currency'
 
 
 class Funds(Base):
@@ -39,7 +40,7 @@ class Funds(Base):
 class PricesFund(BasePrice):
     __tablename__ = PRICES_FUND
 
-    parent_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id.__name__))
+    parent_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
 
     @classmethod
     async def create(cls, session: AsyncSession, data: '') -> int:
@@ -53,7 +54,7 @@ class PricesFund(BasePrice):
 class Deals(Base):
     __tablename__ = DEALS
 
-    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id.__name__))
+    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
     funds: Mapped["Funds"] = relationship(back_populates="deals")
 
     amount: Mapped[float] = mapped_column(sa.Float())
@@ -67,3 +68,44 @@ class Deals(Base):
     @classmethod
     async def update_deal(cls, session: AsyncSession, deal_id: int, data: '') -> int:
         pass
+
+
+class Currencies(Base):
+    __tablename__ = CURRENCIES
+
+    name: Mapped[str] = mapped_column(sa.String(3))
+    code: Mapped[int] = mapped_column(sa.Integer())
+
+    prices: Mapped[t.List["PricesCurrency"]] = relationship()
+    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
+
+    @classmethod
+    async def create(cls, session: AsyncSession, data: 'CurrenciesSchema') -> int:
+        currency = Currencies(name=data.name, code=data.code)
+        session.add(currency)
+        try:
+            await session.flush()
+        except OperationalError:
+            await session.rollback()
+
+    @classmethod
+    async def get_by_code(cls, session: AsyncSession, code: int) -> int:
+        stmt = sa.select(cls)
+        stream = await session.stream(stmt.where(sa.ColumnElement[Currencies.code == code]))
+        async for row in stream:
+            yield row.Currencies
+
+
+class PricesCurrency(BasePrice):
+    __tablename__ = PRICES_CURRENCIES
+
+    currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
+
+    @classmethod
+    async def create(cls, session: AsyncSession, data: '') -> int:
+        pass
+
+    @classmethod
+    async def get_by_date(cls, session: AsyncSession, date) -> int:
+        pass
+
