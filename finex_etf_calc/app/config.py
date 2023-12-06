@@ -97,6 +97,7 @@ config.update(
             host=config['DB_PG_HOST'],
             port=config['DB_PG_PORT'],
             database=config['DB_PG_NAME'],
-        )
+        ),
+        'CELERY_URLS': []
     },
 )
