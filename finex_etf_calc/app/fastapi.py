@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import RedirectResponse
 
-from finex_etf_calc.api import views
+from finex_etf_calc.api.views import routes, admin_routes
 healthcheck_route = APIRouter()
 
 
@@ -20,7 +20,7 @@ def create_app():
     app.add_api_route('/', redirect_to_swagger, methods=['GET'])
 
     app.include_router(healthcheck_route)
-    app.include_router(views.routes, prefix='/v1', tags=['v1'])
-    app.include_router(views.admin_routes, prefix='/admin/v1', tags=['admin'])
+    app.include_router(routes, prefix='/v1', tags=['v1'])
+    app.include_router(admin_routes, prefix='/admin/v1', tags=['admin'])
 
     return app

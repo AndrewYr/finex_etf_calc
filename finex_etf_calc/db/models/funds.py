@@ -2,6 +2,7 @@ import typing as t
 from datetime import date
 
 import sqlalchemy as sa
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -52,7 +53,7 @@ class Funds(Base):
     price: Mapped[t.List["PricesFund"]] = relationship()
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds")
 
-    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
+    currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'FundsSchema') -> int:
@@ -121,3 +122,15 @@ class PricesCurrency(BasePrice):
     async def get_by_date(cls, session: AsyncSession, date) -> int:
         pass
 
+
+class DealsSchema(BaseModel):
+    class Config:
+        from_attributes = True
+
+    id: int = Field(None)
+    type: str = Field(None)
+    # type_id: int = Field(..., description='тип сделки id', examples=[1, 2])
+    fund: str = Field(None)
+    count: int = Field(None)
+    price: float = Field(None)
+    date_deal: date = Field(None)
