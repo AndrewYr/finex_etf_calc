@@ -2,16 +2,13 @@ from datetime import date
 
 from pydantic import Field
 
-from finex_etf_calc.db.models.funds import DealsSchema
+from finex_etf_calc.db.models.funds import DealsSchema, TypesDealsSchema
 
 
 class DealsSchemaReq(DealsSchema):
     id: int = Field(None)
-    # type_id: int = Field(..., description='тип сделки id', examples=[1, 2])
-    fund: str = Field(..., description='Название фонда', examples=['FXEM', 'FXRE'])
-    count: int = Field(..., description='Количество покупки/продажи')
-    price: float = Field(..., description='Цена сделки')
-    date_deal: date = Field(..., description='Дата сделки', examples=[])
+    type_deal: TypesDealsSchema = Field(None, alias='typeDeal')
+    date_deal: date = Field(None, alias='dateDeal')
 
 
 # TODO настроить валидацию на поля

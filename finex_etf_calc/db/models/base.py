@@ -1,6 +1,8 @@
 from datetime import date
+from typing import Any
 
 import sqlalchemy as sa
+from sqlalchemy import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
@@ -14,6 +16,11 @@ Model.metadata.schema = config['DB_SCHEMA']
 class Base(Model):
     __abstract__ = True
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    @staticmethod
+    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> Result[Any]:
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        return res
 
 
 class BasePrice(Base):

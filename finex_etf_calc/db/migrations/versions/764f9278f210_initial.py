@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: 21403a0997e5
+Revision ID: 764f9278f210
 Revises: 
-Create Date: 2023-12-08 18:38:33.001918
+Create Date: 2023-12-10 18:56:41.917028
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from finex_etf_calc.app.config import config
 
 # revision identifiers, used by Alembic.
-revision: str = '21403a0997e5'
+revision: str = '764f9278f210'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -58,7 +58,7 @@ def upgrade() -> None:
     sa.Column('funds_id', sa.Integer(), nullable=False),
     sa.Column('type_deal_id', sa.Integer(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
-    sa.Column('deal_date', sa.Date(), nullable=False),
+    sa.Column('date_deal', sa.Date(), nullable=False),
     sa.Column('count', sa.BigInteger(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.ForeignKeyConstraint(['funds_id'], ['finex_etf_calc_db.tfunds.id'], ),

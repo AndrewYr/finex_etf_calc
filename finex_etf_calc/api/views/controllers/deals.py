@@ -5,14 +5,15 @@ from finex_etf_calc.db.models.funds import Deals, DealsSchema
 
 
 class CreateDeals(BaseController):
-    async def perform(self, deals: t.List[DealsSchema], *args, **kwargs):
+    async def perform(self, deals: t.List[DealsSchema], *args, **kwargs) -> t.AsyncIterator[DealsSchema]:
         async with self.async_session as session:
             for deal in deals:
                 new_deal = await Deals.create(session, deal)
+                await session.refresh(new_deal)
                 yield DealsSchema.model_validate(new_deal)
             await session.commit()
 
 
 class GetDeals(BaseController):
-    def perform(self, data):
+    def perform(self, data, *args, **kwargs):
         pass

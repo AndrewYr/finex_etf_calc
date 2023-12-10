@@ -16,6 +16,7 @@ lxml = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 configloader = "*"
 psycopg2-binary = "*"
+asyncpg = "*"
 
 [dev-packages]
 pytest = "*"

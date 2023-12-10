@@ -2,7 +2,7 @@ import typing as t
 from datetime import date
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_validator, PlainSerializer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -15,6 +15,11 @@ DEALS = 'tdeals'
 TYPES_DEALS = 'ttypes_deal'
 CURRENCIES = 'tcurrencies'
 PRICES_CURRENCIES = 'tprices_currency'
+
+HumanDate = t.Annotated[
+    date,
+    PlainSerializer(lambda x: x.strftime(r"%Y-%m-%d"), return_type=str, when_used="json"),
+]
 
 
 class Currencies(Base):
@@ -51,9 +56,14 @@ class Funds(Base):
 
     currencies: Mapped[t.List["Currencies"]] = relationship()
     price: Mapped[t.List["PricesFund"]] = relationship()
-    deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds")
+    deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds", lazy="selectin")
 
     currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
+
+    @classmethod
+    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Funds':
+        res = await super().get_by_params(cls, session, conditions)
+        return res.one().Funds
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'FundsSchema') -> int:
@@ -86,23 +96,46 @@ class TypesDeals(Base):
 
     name: Mapped[str] = mapped_column(sa.String(16))
     description: Mapped[str] = mapped_column(sa.String(256))
+    deals: Mapped[t.List["Deals"]] = relationship(back_populates="type_deal", lazy="selectin")
+
+    @classmethod
+    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> 'TypesDeals':
+        res = await super().get_by_params(cls, session, conditions)
+        # TODO проверка на наличие, если не нашли то вернуть ошибку
+        return res.one().TypesDeals
 
 
 class Deals(Base):
     __tablename__ = DEALS
 
     funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
-    funds: Mapped["Funds"] = relationship(back_populates="deals")
+    funds: Mapped["Funds"] = relationship(back_populates="deals", lazy="selectin")
 
     type_deal_id: Mapped[int] = mapped_column(sa.ForeignKey(TypesDeals.id))
+    type_deal: Mapped["TypesDeals"] = relationship(back_populates="deals", lazy="selectin")
 
     price: Mapped[float] = mapped_column(sa.Float())
-    deal_date: Mapped[date] = mapped_column(sa.Date())
+    date_deal: Mapped[date] = mapped_column(sa.Date())
     count: Mapped[int] = mapped_column(sa.BigInteger())
 
     @classmethod
-    async def create(cls, session: AsyncSession, data: '') -> int:
-        pass
+    async def create(cls, session: AsyncSession, deal: 'DealsSchema') -> int:
+        type_deal = await TypesDeals.get_by_params(session, (TypesDeals.name == deal.type_deal.name,))
+        fund = await Funds.get_by_params(session, (Funds.ticker == deal.funds.ticker,))
+        new_obj = Deals(
+            funds_id=fund.id,
+            type_deal_id=type_deal.id,
+            price=deal.price,
+            date_deal=deal.date_deal,
+            count=deal.count,
+        )
+        session.add(new_obj)
+        try:
+            await session.flush()
+        except Exception as e: # TODO переделать исключение
+            print(e)
+
+        return new_obj
 
     @classmethod
     async def update_deal(cls, session: AsyncSession, deal_id: int, data: '') -> int:
@@ -123,14 +156,24 @@ class PricesCurrency(BasePrice):
         pass
 
 
+class TypesDealsSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str = Field(None)
+
+
+class FundsSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ticker: str = Field(None)
+
+
 class DealsSchema(BaseModel):
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     id: int = Field(None)
-    type: str = Field(None)
-    # type_id: int = Field(..., description='тип сделки id', examples=[1, 2])
-    fund: str = Field(None)
+    type_deal: TypesDealsSchema = Field(None)
+    funds: FundsSchema = Field(None)
     count: int = Field(None)
     price: float = Field(None)
     date_deal: date = Field(None)
