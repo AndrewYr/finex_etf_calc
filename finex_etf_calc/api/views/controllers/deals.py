@@ -15,5 +15,8 @@ class CreateDeals(BaseController):
 
 
 class GetDeals(BaseController):
-    def perform(self, data, *args, **kwargs):
+    def perform(self, *args, **kwargs):
         pass
+        # async with self.async_session as session:
+        #     deals = await Deals.create(session)
+        #     yield DealsSchema.model_validate(deals)

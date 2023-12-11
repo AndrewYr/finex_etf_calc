@@ -2,7 +2,9 @@ import typing as t
 from datetime import date
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field, ConfigDict, field_validator, PlainSerializer
+from pydantic import BaseModel, Field, ConfigDict
+from sqlalchemy import desc
+from sqlalchemy.sql import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -16,11 +18,6 @@ TYPES_DEALS = 'ttypes_deal'
 CURRENCIES = 'tcurrencies'
 PRICES_CURRENCIES = 'tprices_currency'
 
-HumanDate = t.Annotated[
-    date,
-    PlainSerializer(lambda x: x.strftime(r"%Y-%m-%d"), return_type=str, when_used="json"),
-]
-
 
 class Currencies(Base):
     __tablename__ = CURRENCIES
@@ -29,7 +26,7 @@ class Currencies(Base):
     code: Mapped[int] = mapped_column(sa.Integer())
     description: Mapped[str] = mapped_column(sa.String(256))
 
-    prices: Mapped[t.List["PricesCurrency"]] = relationship()
+    prices: Mapped[t.List["PricesCurrency"]] = relationship(lazy="selectin")
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'CurrenciesSchema') -> int:
@@ -51,19 +48,22 @@ class Currencies(Base):
 class Funds(Base):
     __tablename__ = FUNDS
 
-    ticker: Mapped[str] = mapped_column(sa.String(4))
+    ticker: Mapped[str] = mapped_column(sa.String(4), unique=True)
     description: Mapped[str] = mapped_column(sa.String(256))
 
-    currencies: Mapped[t.List["Currencies"]] = relationship()
-    price: Mapped[t.List["PricesFund"]] = relationship()
+    currencies: Mapped[t.List["Currencies"]] = relationship(lazy="selectin")
+    price: Mapped[t.List["PricesFund"]] = relationship(lazy="selectin")
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds", lazy="selectin")
 
     currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
 
     @classmethod
-    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Funds':
-        res = await super().get_by_params(cls, session, conditions)
-        return res.one().Funds
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Funds':
+        rrr = (await session.execute(
+            sa.select(Deals.funds_id, func.sum(Deals.count)).where(Deals.type_deal_id == 1).group_by(
+                Deals.funds_id).order_by(Deals.funds_id)))
+        res = await super().get_one_by_params(cls, session, conditions)
+        return res.Funds
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'FundsSchema') -> int:
@@ -76,19 +76,24 @@ class Funds(Base):
         async for row in stream:
             yield row.Funds
 
+    async def get_actual_count(self):
+        pass
+
 
 class PricesFund(BasePrice):
     __tablename__ = PRICES_FUND
 
-    parent_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
+    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
 
     @classmethod
     async def create(cls, session: AsyncSession, data: '') -> int:
         pass
 
     @classmethod
-    async def get_by_date(cls, session: AsyncSession, date) -> int:
-        pass
+    async def get_last_by_funds_id(cls, session: AsyncSession, funds_id) -> 'PricesFund':
+        res = (await session.execute(sa.select(PricesFund).where(PricesFund.funds_id == funds_id)
+                                     .order_by(desc(PricesFund.price_date))))
+        return res.first()
 
 
 class TypesDeals(Base):
@@ -99,10 +104,9 @@ class TypesDeals(Base):
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="type_deal", lazy="selectin")
 
     @classmethod
-    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> 'TypesDeals':
-        res = await super().get_by_params(cls, session, conditions)
-        # TODO проверка на наличие, если не нашли то вернуть ошибку
-        return res.one().TypesDeals
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'TypesDeals':
+        res = await super().get_one_by_params(cls, session, conditions)
+        return res.TypesDeals
 
 
 class Deals(Base):
@@ -120,8 +124,9 @@ class Deals(Base):
 
     @classmethod
     async def create(cls, session: AsyncSession, deal: 'DealsSchema') -> int:
-        type_deal = await TypesDeals.get_by_params(session, (TypesDeals.name == deal.type_deal.name,))
-        fund = await Funds.get_by_params(session, (Funds.ticker == deal.funds.ticker,))
+        # TODO добавить проверку на наличие количества в БД если речь идет о продаже
+        type_deal = await TypesDeals.get_one_by_params(session, (TypesDeals.name == deal.type_deal.name,))
+        fund = await Funds.get_one_by_params(session, (Funds.ticker == deal.funds.ticker,))
         new_obj = Deals(
             funds_id=fund.id,
             type_deal_id=type_deal.id,
@@ -140,6 +145,20 @@ class Deals(Base):
     @classmethod
     async def update_deal(cls, session: AsyncSession, deal_id: int, data: '') -> int:
         pass
+
+    @classmethod
+    async def get_actual_deals(cls, session: AsyncSession) -> int:
+        res_buy = (await session.execute(
+            sa.select(cls.funds_id, func.sum(cls.count)).where(cls.type_deal_id == 1).group_by(
+                cls.funds_id).order_by(cls.funds_id)))
+        res_sell = (await session.execute(
+            sa.select(cls.funds_id, func.sum(cls.count)).where(cls.type_deal_id == 1).group_by(
+                cls.funds_id).order_by(cls.funds_id)))
+        # TODO посчитать разницу между buy и sell по одинаковым funds_id и собрать в отдельную таблицу
+
+
+        res = (await session.execute(sa.select(cls).group_by(cls.funds_id)))
+        res = await PricesFund.get_last_by_funds_id(session)
 
 
 class PricesCurrency(BasePrice):

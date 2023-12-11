@@ -1,8 +1,9 @@
 from datetime import date
-from typing import Any
+from typing import Any, Tuple
 
 import sqlalchemy as sa
-from sqlalchemy import Result
+from fastapi import HTTPException
+from sqlalchemy import Result, Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
@@ -18,9 +19,13 @@ class Base(Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     @staticmethod
-    async def get_by_params(cls, session: AsyncSession, conditions: tuple) -> Result[Any]:
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> Row[tuple[Any, ...] | Any]:
         res = (await session.execute(sa.select(cls).where(*conditions)))
-        return res
+        obj_res = res.one_or_none()
+        if obj_res is None:
+            raise HTTPException(status_code=404, detail=f'{cls.__name__} with params {conditions[0]} not found')
+            # TODO поправить сообщение об ошибке чтобы
+        return obj_res
 
 
 class BasePrice(Base):

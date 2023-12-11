@@ -67,11 +67,11 @@ def upgrade() -> None:
     schema='finex_etf_calc_db'
     )
     op.create_table('tprices_fund',
-    sa.Column('parent_id', sa.Integer(), nullable=False),
+    sa.Column('funds_id', sa.Integer(), nullable=False),
     sa.Column('price_date', sa.Date(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['parent_id'], ['finex_etf_calc_db.tfunds.id'], ),
+    sa.ForeignKeyConstraint(['funds_id'], ['finex_etf_calc_db.tfunds.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='finex_etf_calc_db'
     )
