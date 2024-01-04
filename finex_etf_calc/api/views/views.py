@@ -1,23 +1,25 @@
 import typing as t
 from fastapi import APIRouter, Depends
 
-from finex_etf_calc.api.views.controllers.deals import CreateDeals, GetDeals
+from finex_etf_calc.api.views.controllers.deals import CreateDeals, GetFundDeals
 from finex_etf_calc.api.views.serializers.request import DealsSchemaReq
-from finex_etf_calc.api.views.serializers.response import DealsSchemaResp
+from finex_etf_calc.api.views.serializers.response import DealsSchemaResp, PricesSchemaResp
 
 routes = APIRouter()
 
 
 @routes.get(
-    '/deals',
-    response_model=t.List[dict],
+    '/prices',
+    response_model=t.List[PricesSchemaResp],
     status_code=200,
     description='Получить актуальную сумму всех имеющихся фондов'
 )
 async def get_funds(
-        controller: GetDeals = Depends(GetDeals)
+        controller: GetFundDeals = Depends(GetFundDeals)
 ):
-    return [deal async for deal in controller.perform()]
+    # TODO добавить в response валюту фонда чтобы понимать стоимость расчитывается в какой валюте
+    # TODO добавить общий результат на какуюто определенную валюту с пересчетом допустим на рубли
+    return await controller.perform()
 
 
 @routes.post(

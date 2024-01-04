@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: 764f9278f210
+Revision ID: a1f4c48b8c7a
 Revises: 
-Create Date: 2023-12-10 18:56:41.917028
+Create Date: 2023-12-17 19:17:10.225167
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from finex_etf_calc.app.config import config
 
 # revision identifiers, used by Alembic.
-revision: str = '764f9278f210'
+revision: str = 'a1f4c48b8c7a'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,55 +24,60 @@ def upgrade() -> None:
     op.create_table('tcurrencies',
     sa.Column('name', sa.String(length=3), nullable=False),
     sa.Column('code', sa.Integer(), nullable=False),
-    sa.Column('description', sa.String(length=256), nullable=False),
+    sa.Column('description', sa.String(length=256), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('code'),
+    sa.UniqueConstraint('name'),
     schema='finex_etf_calc_db'
     )
     op.create_table('ttypes_deal',
     sa.Column('name', sa.String(length=16), nullable=False),
-    sa.Column('description', sa.String(length=256), nullable=False),
+    sa.Column('description', sa.String(length=256), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.PrimaryKeyConstraint('id'),
     schema='finex_etf_calc_db'
     )
     op.create_table('tfunds',
     sa.Column('ticker', sa.String(length=4), nullable=False),
-    sa.Column('description', sa.String(length=256), nullable=False),
-    sa.Column('currencies_id', sa.Integer(), nullable=False),
+    sa.Column('description', sa.String(length=256), nullable=True),
+    sa.Column('currencies_name', sa.String(length=3), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['currencies_id'], ['finex_etf_calc_db.tcurrencies.id'], ),
+    sa.ForeignKeyConstraint(['currencies_name'], ['finex_etf_calc_db.tcurrencies.name'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('ticker'),
     schema='finex_etf_calc_db'
     )
     op.create_table('tprices_currency',
-    sa.Column('currencies_id', sa.Integer(), nullable=False),
+    sa.Column('currencies_name', sa.String(length=3), nullable=False),
     sa.Column('price_date', sa.Date(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['currencies_id'], ['finex_etf_calc_db.tcurrencies.id'], ),
+    sa.ForeignKeyConstraint(['currencies_name'], ['finex_etf_calc_db.tcurrencies.name'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint("currencies_name", "price_date", name="unique_prices_currency"),
     schema='finex_etf_calc_db'
     )
     op.create_table('tdeals',
-    sa.Column('funds_id', sa.Integer(), nullable=False),
+    sa.Column('funds_ticker', sa.String(length=4), nullable=False),
     sa.Column('type_deal_id', sa.Integer(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('date_deal', sa.Date(), nullable=False),
-    sa.Column('count', sa.BigInteger(), nullable=False),
+    sa.Column('count', sa.Integer(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['funds_id'], ['finex_etf_calc_db.tfunds.id'], ),
+    sa.ForeignKeyConstraint(['funds_ticker'], ['finex_etf_calc_db.tfunds.ticker'], ),
     sa.ForeignKeyConstraint(['type_deal_id'], ['finex_etf_calc_db.ttypes_deal.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='finex_etf_calc_db'
     )
     op.create_table('tprices_fund',
-    sa.Column('funds_id', sa.Integer(), nullable=False),
+    sa.Column('funds_ticker', sa.String(length=4), nullable=False),
     sa.Column('price_date', sa.Date(), nullable=False),
     sa.Column('price', sa.Float(), nullable=False),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.ForeignKeyConstraint(['funds_id'], ['finex_etf_calc_db.tfunds.id'], ),
+    sa.ForeignKeyConstraint(['funds_ticker'], ['finex_etf_calc_db.tfunds.ticker'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint("funds_ticker", "price_date", name="unique_prices_fund"),
     schema='finex_etf_calc_db'
     )
     # ### end Alembic commands ###

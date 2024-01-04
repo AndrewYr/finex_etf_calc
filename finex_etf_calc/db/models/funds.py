@@ -1,15 +1,14 @@
 import typing as t
 from datetime import date
+from typing import Sequence
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import desc
-from sqlalchemy.sql import func
+from sqlalchemy import desc, Row, UniqueConstraint, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
-from .base import Base, BasePrice
+from finex_etf_calc.db.models import Base, BasePrice
 
 FUNDS = 'tfunds'
 PRICES_FUND = 'tprices_fund'
@@ -22,11 +21,21 @@ PRICES_CURRENCIES = 'tprices_currency'
 class Currencies(Base):
     __tablename__ = CURRENCIES
 
-    name: Mapped[str] = mapped_column(sa.String(3))
-    code: Mapped[int] = mapped_column(sa.Integer())
-    description: Mapped[str] = mapped_column(sa.String(256))
+    name: Mapped[str] = mapped_column(sa.String(3), unique=True)
+    code: Mapped[int] = mapped_column(sa.Integer(), unique=True)
+    description: Mapped[str] = mapped_column(sa.String(256), nullable=True)
 
     prices: Mapped[t.List["PricesCurrency"]] = relationship(lazy="selectin")
+
+    def __init__(self, name, code):
+        self.name = name
+        self.code = code
+
+    @classmethod
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Currencies':
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.Currencies
 
     @classmethod
     async def create(cls, session: AsyncSession, data: 'CurrenciesSchema') -> int:
@@ -37,82 +46,118 @@ class Currencies(Base):
         except OperationalError:
             await session.rollback()
 
+
+class PricesCurrency(BasePrice):
+    __tablename__ = PRICES_CURRENCIES
+
+    currencies_name: Mapped[str] = mapped_column(sa.ForeignKey(Currencies.name))
+
+    _table_args__ = (UniqueConstraint('currencies_name', 'price_date', name='unique_prices_currency'),)
+
     @classmethod
-    async def get_by_code(cls, session: AsyncSession, code: int) -> int:
-        stmt = sa.select(cls)
-        stream = await session.stream(stmt.where(sa.ColumnElement[Currencies.code == code]))
-        async for row in stream:
-            yield row.Currencies
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'PricesCurrency':
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.PricesCurrency
+
+    @classmethod
+    async def create(cls, session: AsyncSession, data: '') -> int:
+        pass
 
 
 class Funds(Base):
     __tablename__ = FUNDS
 
     ticker: Mapped[str] = mapped_column(sa.String(4), unique=True)
-    description: Mapped[str] = mapped_column(sa.String(256))
+    description: Mapped[str] = mapped_column(sa.String(256), nullable=True)
 
     currencies: Mapped[t.List["Currencies"]] = relationship(lazy="selectin")
     price: Mapped[t.List["PricesFund"]] = relationship(lazy="selectin")
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="funds", lazy="selectin")
 
-    currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
+    currencies_name: Mapped[str] = mapped_column(sa.ForeignKey(Currencies.name))
+
+    def __init__(self, ticker, currencies_name):
+        self.ticker = ticker
+        self.currencies_name = currencies_name
 
     @classmethod
     async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Funds':
-        rrr = (await session.execute(
-            sa.select(Deals.funds_id, func.sum(Deals.count)).where(Deals.type_deal_id == 1).group_by(
-                Deals.funds_id).order_by(Deals.funds_id)))
-        res = await super().get_one_by_params(cls, session, conditions)
-        return res.Funds
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.Funds
 
     @classmethod
-    async def create(cls, session: AsyncSession, data: 'FundsSchema') -> int:
-        pass
+    async def create(cls, session: AsyncSession, funds: 'FundsSchema') -> 'Funds':
+        new_onj = Funds(
+            ticker=funds.ticker,
+            currencies_name=funds.currencies_name,
+        )
+        session.add(new_onj)
+        try:
+            await session.flush()
+        except OperationalError:
+            await session.rollback()
 
-    @classmethod
-    async def get_by_id(cls, session: AsyncSession, fund_id: int) -> int:
-        stm = sa.select(cls)
-        stream = await session.stream(stm.order_by(cls.id))
-        async for row in stream:
-            yield row.Funds
-
-    async def get_actual_count(self):
-        pass
+        return new_onj
 
 
 class PricesFund(BasePrice):
     __tablename__ = PRICES_FUND
 
-    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
+    funds_ticker: Mapped[str] = mapped_column(sa.ForeignKey(Funds.ticker))
+
+    _table_args__ = (UniqueConstraint('funds_ticker', 'price_date', name='unique_prices_fund'),)
+
+    def __init__(self, funds_ticker, price_date, price):
+        self.funds_ticker = funds_ticker
+        self.price_date = price_date
+        self.price = price
 
     @classmethod
-    async def create(cls, session: AsyncSession, data: '') -> int:
-        pass
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'PricesFund':
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.PricesFund
 
     @classmethod
-    async def get_last_by_funds_id(cls, session: AsyncSession, funds_id) -> 'PricesFund':
-        res = (await session.execute(sa.select(PricesFund).where(PricesFund.funds_id == funds_id)
-                                     .order_by(desc(PricesFund.price_date))))
-        return res.first()
+    async def create(cls, session: AsyncSession, prices: 'PricesFundSchema') -> 'PricesFund':
+        new_obj = PricesFund(
+            funds_ticker=prices.funds_ticker,
+            price_date=prices.price_date,
+            price=prices.price,
+        )
+        session.add(new_obj)
+        try:
+            await session.flush()
+        except OperationalError:
+            await session.rollback()
+
+        return new_obj
 
 
 class TypesDeals(Base):
     __tablename__ = TYPES_DEALS
 
     name: Mapped[str] = mapped_column(sa.String(16))
-    description: Mapped[str] = mapped_column(sa.String(256))
+    description: Mapped[str] = mapped_column(sa.String(256), nullable=True)
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="type_deal", lazy="selectin")
 
     @classmethod
     async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'TypesDeals':
-        res = await super().get_one_by_params(cls, session, conditions)
-        return res.TypesDeals
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.TypesDeals
+
+    @classmethod
+    async def create(cls, session: AsyncSession, data: '') -> int:
+        pass
 
 
 class Deals(Base):
     __tablename__ = DEALS
 
-    funds_id: Mapped[int] = mapped_column(sa.ForeignKey(Funds.id))
+    funds_ticker: Mapped[str] = mapped_column(sa.ForeignKey(Funds.ticker))
     funds: Mapped["Funds"] = relationship(back_populates="deals", lazy="selectin")
 
     type_deal_id: Mapped[int] = mapped_column(sa.ForeignKey(TypesDeals.id))
@@ -120,15 +165,32 @@ class Deals(Base):
 
     price: Mapped[float] = mapped_column(sa.Float())
     date_deal: Mapped[date] = mapped_column(sa.Date())
-    count: Mapped[int] = mapped_column(sa.BigInteger())
+    count: Mapped[int] = mapped_column(sa.Integer())
+
+    def __init__(self, funds_ticker, type_deal_id, price, date_deal, count):
+        self.funds_ticker = funds_ticker
+        self.type_deal_id = type_deal_id
+        self.price = price
+        self.date_deal = date_deal
+        self.count = count
 
     @classmethod
-    async def create(cls, session: AsyncSession, deal: 'DealsSchema') -> int:
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Deals':
+        res = (await session.execute(sa.select(cls).where(*conditions)))
+        obj = res.one_or_none()
+        return obj.Deals
+
+    @classmethod
+    async def create(cls, session: AsyncSession, deal: 'DealsSchema') -> 'Deals':
         # TODO добавить проверку на наличие количества в БД если речь идет о продаже
         type_deal = await TypesDeals.get_one_by_params(session, (TypesDeals.name == deal.type_deal.name,))
         fund = await Funds.get_one_by_params(session, (Funds.ticker == deal.funds.ticker,))
+        if type_deal is None or fund is None:
+            pass  # TODO подумать как обработкать не найденные значения
+            # raise HTTPException(status_code=404, detail=f'{cls.__name__} with params {conditions[0]} not found')
+
         new_obj = Deals(
-            funds_id=fund.id,
+            funds_ticker=fund.ticker,
             type_deal_id=type_deal.id,
             price=deal.price,
             date_deal=deal.date_deal,
@@ -137,62 +199,7 @@ class Deals(Base):
         session.add(new_obj)
         try:
             await session.flush()
-        except Exception as e: # TODO переделать исключение
-            print(e)
+        except OperationalError:
+            await session.rollback()
 
         return new_obj
-
-    @classmethod
-    async def update_deal(cls, session: AsyncSession, deal_id: int, data: '') -> int:
-        pass
-
-    @classmethod
-    async def get_actual_deals(cls, session: AsyncSession) -> int:
-        res_buy = (await session.execute(
-            sa.select(cls.funds_id, func.sum(cls.count)).where(cls.type_deal_id == 1).group_by(
-                cls.funds_id).order_by(cls.funds_id)))
-        res_sell = (await session.execute(
-            sa.select(cls.funds_id, func.sum(cls.count)).where(cls.type_deal_id == 1).group_by(
-                cls.funds_id).order_by(cls.funds_id)))
-        # TODO посчитать разницу между buy и sell по одинаковым funds_id и собрать в отдельную таблицу
-
-
-        res = (await session.execute(sa.select(cls).group_by(cls.funds_id)))
-        res = await PricesFund.get_last_by_funds_id(session)
-
-
-class PricesCurrency(BasePrice):
-    __tablename__ = PRICES_CURRENCIES
-
-    currencies_id: Mapped[int] = mapped_column(sa.ForeignKey(Currencies.id))
-
-    @classmethod
-    async def create(cls, session: AsyncSession, data: '') -> int:
-        pass
-
-    @classmethod
-    async def get_by_date(cls, session: AsyncSession, date) -> int:
-        pass
-
-
-class TypesDealsSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    name: str = Field(None)
-
-
-class FundsSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    ticker: str = Field(None)
-
-
-class DealsSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int = Field(None)
-    type_deal: TypesDealsSchema = Field(None)
-    funds: FundsSchema = Field(None)
-    count: int = Field(None)
-    price: float = Field(None)
-    date_deal: date = Field(None)

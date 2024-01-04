@@ -17,6 +17,9 @@ uvicorn = {version = "*", extras = ["standard"]}
 configloader = "*"
 psycopg2-binary = "*"
 asyncpg = "*"
+httpx = "*"
+pandas = "*"
+openpyxl = "*"
 
 [dev-packages]
 pytest = "*"

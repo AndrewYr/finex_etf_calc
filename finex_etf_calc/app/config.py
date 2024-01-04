@@ -98,6 +98,6 @@ config.update(
             port=config['DB_PG_PORT'],
             database=config['DB_PG_NAME'],
         ),
-        'CELERY_URLS': []
+        'CELERY_URLS': ['amqp://admin:admin@127.0.0.1:5672']
     },
 )
