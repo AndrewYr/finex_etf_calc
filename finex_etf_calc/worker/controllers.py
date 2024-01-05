@@ -2,14 +2,18 @@ import os
 from datetime import datetime
 
 import pandas as pd
+import sqlalchemy as sa
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finex_etf_calc.app.config import config
 from finex_etf_calc.db.engine import scoped_session
-from finex_etf_calc.db.models.funds import Funds, PricesFund
-from finex_etf_calc.api.views.serializers.schemas import FundsSchema, PricesFundSchema
+from finex_etf_calc.db.models.funds import Funds, PricesFund, Currencies, PricesCurrency
+from finex_etf_calc.api.views.serializers.schemas import FundsSchema, PricesFundSchema, PricesCurrencySchema
+from finex_etf_calc.utils.constants import CurrenciesNames
 from finex_etf_calc.utils.integrations.finex_etf_adapter import FinexAdapter
+from finex_etf_calc.utils.integrations.cbr_adapter import CBRAdapter
 
 
 class PandasModel:
@@ -91,4 +95,53 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                     ind_p += 1
 
 
+class CurrenciesLoaderAdapter(CBRAdapter):
+    @staticmethod
+    async def first_last_date_currencies(session):
+        res = (await session.execute(
+            sa.select(
+                Currencies.name,
+                Currencies.code_cbr,
+                func.min(PricesFund.price_date).label("start_date"),
+                func.max(PricesFund.price_date).label("end_date"),
+            ).where(Currencies.name != CurrenciesNames.RUB).group_by(Currencies.name, Currencies.code_cbr)))
+        list_first_last_date_currencies = res.all()
+        return list_first_last_date_currencies
+
+    @classmethod
+    async def create_prices_currency(cls, session: AsyncSession, currency_name: str, date: datetime.date, price: float):
+        try:
+            await PricesCurrency.create(
+                session=session,
+                prices=PricesCurrencySchema(
+                    currency_name=currency_name,
+                    price_date=date,
+                    price=price,
+                ),
+            )
+            await session.commit()
+        except IntegrityError as e:
+            await session.rollback()
+            pass  # TODO добавить лог что не получилось загрузить данное значение и описание ошибки
+
+    async def load_all_prices_currency(self):
+        async with scoped_session() as session:
+            lst_currencies = await self.first_last_date_currencies(session)
+            for currency in lst_currencies:
+                prices_currency = self.get_curs_dynamic(
+                    currency.start_date.strftime('%Y-%m-%d'),
+                    currency.end_date.strftime('%Y-%m-%d'),
+                    currency.code_cbr,
+                )
+
+                for price in prices_currency:
+                    await self.create_prices_currency(
+                        session,
+                        currency.name,
+                        datetime.strptime(price['CursDate'], '%Y-%m-%dT%H:%M:%S%z').date(),
+                        price['VunitRate'],
+                    )
+
+
 funds_loader_adapter = FundsLoaderAdapter()
+currencies_loader_adapter = CurrenciesLoaderAdapter()

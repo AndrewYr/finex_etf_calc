@@ -1,9 +1,9 @@
 import typing as t
 from datetime import date
-from typing import Sequence
+from typing import Any
 
 import sqlalchemy as sa
-from sqlalchemy import desc, Row, UniqueConstraint, func
+from sqlalchemy import UniqueConstraint, Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -23,6 +23,7 @@ class Currencies(Base):
 
     name: Mapped[str] = mapped_column(sa.String(3), unique=True)
     code: Mapped[int] = mapped_column(sa.Integer(), unique=True)
+    code_cbr: Mapped[str] = mapped_column(sa.String(), unique=True)
     description: Mapped[str] = mapped_column(sa.String(256), nullable=True)
 
     prices: Mapped[t.List["PricesCurrency"]] = relationship(lazy="selectin")
@@ -32,9 +33,12 @@ class Currencies(Base):
         self.code = code
 
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Currencies':
+    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> Row[tuple[
+                                                                                          Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.Currencies
 
     @classmethod
@@ -54,15 +58,37 @@ class PricesCurrency(BasePrice):
 
     _table_args__ = (UniqueConstraint('currencies_name', 'price_date', name='unique_prices_currency'),)
 
+    def __init__(self, currencies_name, price_date, price):
+        self.currencies_name = currencies_name
+        self.price_date = price_date
+        self.price = price
+
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'PricesCurrency':
+    async def get_one_by_params(
+            cls,
+            session: AsyncSession,
+            conditions: tuple,
+    ) -> Row[tuple[Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.PricesCurrency
 
     @classmethod
-    async def create(cls, session: AsyncSession, data: '') -> int:
-        pass
+    async def create(cls, session: AsyncSession, prices: 'PricesCurrencySchema') -> 'PricesCurrency':
+        new_obj = PricesCurrency(
+            currencies_name=prices.currency_name,
+            price_date=prices.price_date,
+            price=prices.price,
+        )
+        session.add(new_obj)
+        try:
+            await session.flush()
+        except OperationalError:
+            await session.rollback()
+
+        return new_obj
 
 
 class Funds(Base):
@@ -82,9 +108,15 @@ class Funds(Base):
         self.currencies_name = currencies_name
 
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Funds':
+    async def get_one_by_params(
+            cls,
+            session: AsyncSession,
+            conditions: tuple,
+    ) -> Row[tuple[Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.Funds
 
     @classmethod
@@ -115,9 +147,15 @@ class PricesFund(BasePrice):
         self.price = price
 
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'PricesFund':
+    async def get_one_by_params(
+            cls,
+            session: AsyncSession,
+            conditions: tuple,
+    ) -> Row[tuple[Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.PricesFund
 
     @classmethod
@@ -143,10 +181,19 @@ class TypesDeals(Base):
     description: Mapped[str] = mapped_column(sa.String(256), nullable=True)
     deals: Mapped[t.List["Deals"]] = relationship(back_populates="type_deal", lazy="selectin")
 
+    def __init__(self):
+        pass
+
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'TypesDeals':
+    async def get_one_by_params(
+            cls,
+            session: AsyncSession,
+            conditions: tuple,
+    ) -> Row[tuple[Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.TypesDeals
 
     @classmethod
@@ -175,9 +222,15 @@ class Deals(Base):
         self.count = count
 
     @classmethod
-    async def get_one_by_params(cls, session: AsyncSession, conditions: tuple) -> 'Deals':
+    async def get_one_by_params(
+            cls,
+            session: AsyncSession,
+            conditions: tuple,
+    ) -> Row[tuple[Any, ...] | Any] | None | Any:
         res = (await session.execute(sa.select(cls).where(*conditions)))
         obj = res.one_or_none()
+        if not obj:
+            return obj
         return obj.Deals
 
     @classmethod

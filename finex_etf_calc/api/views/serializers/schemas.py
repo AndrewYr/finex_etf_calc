@@ -1,6 +1,7 @@
+import typing as t
 from datetime import date
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, RootModel
 
 
 class TypesDealsSchema(BaseModel):
@@ -31,5 +32,16 @@ class PricesFundSchema(BaseModel):
     funds_ticker: str = Field(...)
     price_date: date = Field(...)
     price: float = Field(...)
+    count: float = Field(None)
+    currency: str = Field(None)
+    result: float = Field(None)
+    in_rub: float = Field(None)
+
+
+class PricesCurrencySchema(BaseModel):
+    currency_name: str = Field(...)
+    price_date: date = Field(...)
+    price: float = Field(...)
+
 
 # TODO возможно нужно переименовать файл

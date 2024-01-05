@@ -2,19 +2,19 @@ import asyncio
 
 from celery.schedules import crontab
 
-from finex_etf_calc.worker.controllers import funds_loader_adapter
+from finex_etf_calc.worker.controllers import funds_loader_adapter, currencies_loader_adapter
 from worker import app
 
 loop = asyncio.get_event_loop()
-app.conf.beat_schedule = {
-    'run-update-etf-price': {
-        'task': 'tasks.update_etf_price',
-        'schedule': crontab(
-            hour='11',
-            minute='20',
-        )
-    }
-}
+# app.conf.beat_schedule = {
+#     'run-update-etf-price': {
+#         'task': 'tasks.load_prices_currency',
+#         'schedule': crontab(
+#             hour='19',
+#             minute='03',
+#         )
+#     }
+# }
 
 
 @app.task(
@@ -23,7 +23,7 @@ app.conf.beat_schedule = {
     retry_backoff=60,
     retry_jitter=False,
     retry_kwargs={
-        'max_retries': 10
+        'max_retries': 3
     }
 )
 def update_etf_price(*args, **kwargs):
@@ -36,7 +36,7 @@ def update_etf_price(*args, **kwargs):
     retry_backoff=60,
     retry_jitter=False,
     retry_kwargs={
-        'max_retries': 10
+        'max_retries': 3
     }
 )
 def first_load_prices(*args, **kwargs):
@@ -44,15 +44,9 @@ def first_load_prices(*args, **kwargs):
 
 
 @app.task(
-    bind=True,
-    name='tasks.update_prices_currency',
-    retry_backoff=60,
-    retry_jitter=False,
-    retry_kwargs={
-        'max_retries': 10
-    }
+    name='tasks.load_prices_currency',
 )
-def update_prices_currency(*args, **kwargs):
-    loop.run_until_complete()
+def load_prices_currency(*args, **kwargs):
+    loop.run_until_complete(currencies_loader_adapter.load_all_prices_currency())
 
 

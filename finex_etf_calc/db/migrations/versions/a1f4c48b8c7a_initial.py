@@ -24,6 +24,7 @@ def upgrade() -> None:
     op.create_table('tcurrencies',
     sa.Column('name', sa.String(length=3), nullable=False),
     sa.Column('code', sa.Integer(), nullable=False),
+    sa.Column('code_cbr', sa.String(), nullable=True),
     sa.Column('description', sa.String(length=256), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -118,6 +119,7 @@ def upgrade() -> None:
             {
                 'name': 'USD',
                 'code': 840,
+                'code_cbr': 'R01235',
                 'description': 'Доллар США'
             },
             {
@@ -128,11 +130,13 @@ def upgrade() -> None:
             {
                 'name': 'KZT',
                 'code': 398,
+                'code_cbr': 'R01335',
                 'description': 'Тенге'
             },
             {
                 'name': 'EUR',
                 'code': 978,
+                'code_cbr': 'R01239',
                 'description': 'Евро'
             }
         ]

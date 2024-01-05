@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import Field, ConfigDict, BaseModel
+from pydantic import Field, ConfigDict, BaseModel, field_validator
 
 from finex_etf_calc.api.views.serializers.schemas import DealsSchema, TypesDealsSchema
 
@@ -21,3 +21,16 @@ class PricesSchemaResp(BaseModel):
     price: float = Field(...)
     result: float = Field(...)
     price_date: date = Field(..., alias='priceDate')
+    in_rub: float = Field(..., alias='inRUB')
+
+    @field_validator('result')
+    def result_check(cls, v):
+        return round(v, 2)
+
+    @field_validator('price')
+    def price_check(cls, v):
+        return round(v, 2)
+
+    @field_validator('in_rub')
+    def price_check(cls, v):
+        return round(v, 2)
