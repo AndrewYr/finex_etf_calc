@@ -2,24 +2,24 @@ import datetime
 
 import sqlalchemy as sa
 
-from finex_etf_calc.db.models.funds import PricesCurrency, Currencies
+from finex_etf_calc.db.models.funds import PricesCurrency
 
 
-class PricesCurrencyAdapter:
-    @staticmethod
-    async def last_price_currency_on_date(session, currency_name, target_date: datetime.date):
+class PricesCurrencyAdapter(PricesCurrency):
+    @classmethod
+    async def last_price_currency_on_date(cls, session, currency_name, target_date: datetime.date):
         res = (await session.execute(
             sa.select(
-                PricesCurrency.currencies_name,
-                PricesCurrency.price,
-                sa.func.max(PricesCurrency.price_date).label("max_price_date"),
+                cls.currencies_name,
+                cls.price,
+                sa.func.max(cls.price_date).label("max_price_date"),
             ).where(
                 sa.and_(
-                    PricesCurrency.price_date <= target_date,
-                    PricesCurrency.currencies_name == currency_name,
+                    cls.price_date <= target_date,
+                    cls.currencies_name == currency_name,
                 )
             )
-            .group_by(PricesCurrency.currencies_name, PricesCurrency.price).order_by(sa.desc("max_price_date")).limit(1)
+            .group_by(cls.currencies_name, cls.price).order_by(sa.desc("max_price_date")).limit(1)
         ))
         return res.first()
 

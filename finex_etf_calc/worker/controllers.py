@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 import pandas as pd
 import sqlalchemy as sa
@@ -65,7 +65,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                 await self.check_or_create_fund(session, ticker, currency)
                 await self.create_prices_fund(session, ticker, date, price)
 
-    async def create_prices_by_history(self):
+    async def full_load_prices_funds(self):
         await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
         res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
         async with scoped_session() as session:
@@ -139,6 +139,20 @@ class CurrenciesLoaderAdapter(CBRAdapter):
                         session,
                         currency.name,
                         datetime.strptime(price['CursDate'], '%Y-%m-%dT%H:%M:%S%z').date(),
+                        price['VunitRate'],
+                    )
+
+    async def update_prices_currency(self):
+        prices_currency_response, date_response = self.get_curs_on_date(
+            date.today().strftime('%Y-%m-%d')
+        )
+        async with scoped_session() as session:
+            for price in prices_currency_response:
+                if price['VchCode'] in CurrenciesNames.get_attributes():
+                    await self.create_prices_currency(
+                        session,
+                        price['VchCode'],
+                        date_response,
                         price['VunitRate'],
                     )
 
