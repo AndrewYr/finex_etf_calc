@@ -1,3 +1,4 @@
+import time
 import asyncio
 
 from celery.schedules import crontab
@@ -42,12 +43,16 @@ def update_prices_currency_task(*args, **kwargs):
     name='tasks.full_load_prices_funds',
 )
 def full_load_prices_funds_task(*args, **kwargs):
-    loop.run_until_complete(funds_loader_adapter.full_load_prices_funds())
+    start_time = time.time()
+    loop.run_until_complete(funds_loader_adapter.load_prices_funds())
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print('Elapsed time: ', elapsed_time)
 
 
 @app.task(
     name='tasks.full_load_prices_currency',
 )
 def full_load_prices_currency_task(*args, **kwargs):
-    loop.run_until_complete(currencies_loader_adapter.create_prices_currency())
+    loop.run_until_complete(currencies_loader_adapter.load_all_prices_currency())
 

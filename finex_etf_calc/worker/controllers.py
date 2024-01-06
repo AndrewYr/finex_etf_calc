@@ -1,6 +1,8 @@
+import asyncio
 import os
 from datetime import datetime, date
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy import func
@@ -14,6 +16,9 @@ from finex_etf_calc.api.views.serializers.schemas import FundsSchema, PricesFund
 from finex_etf_calc.utils.constants import CurrenciesNames
 from finex_etf_calc.utils.integrations.finex_etf_adapter import FinexAdapter
 from finex_etf_calc.utils.integrations.cbr_adapter import CBRAdapter
+
+
+sem = asyncio.Semaphore(10)
 
 
 class PandasModel:
@@ -31,7 +36,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
     async def check_or_create_prices_fund(cls, session: AsyncSession, ticker: str, date_price: datetime.date, price: float):
         prices_fund = await PricesFund.get_one_by_params(
             session,
-            (PricesFund.funds_ticker == ticker, PricesFund.price_date == date_price),
+            (PricesFund.funds_ticker == ticker, PricesFund.price_date == date_price,),
         )
         if prices_fund is None:
             try:
@@ -64,30 +69,28 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
             for ind in res.T:
                 ticker = res.T[ind].ticker
                 currency = res.T[ind].currency
-                date = datetime.date(res.T[ind].date)
+                date_res = datetime.date(res.T[ind].date)
                 price = res.T[ind].value
 
                 await self.check_or_create_fund(session, ticker, currency)
-                await self.check_or_create_prices_fund(session, ticker, date, price)
+                await self.check_or_create_prices_fund(session, ticker, date_res, price)
 
-    async def full_load_prices_funds(self):
-        await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
-        res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
-        async with scoped_session() as session:
+    async def process_data_part(self, data_part, session):  # TODO переназвать функцию посмотреть как можно оптимизировать код
+        async with sem:
             ind = 0
-            while ind < res.T.shape[0]:
+            while ind < data_part.T.shape[0]:
                 ind_first = ind
                 ind_second = ind + 1
                 ind += 2
 
-                ticker = res.columns.values[ind_second][:4]
-                currency = res.columns.values[ind_second][-3:]
+                ticker = data_part.columns.values[ind_second][:4]
+                currency = data_part.columns.values[ind_second][-3:]
                 await self.check_or_create_fund(session, ticker, currency)
 
-                dates = res.T.values[ind_first]
-                prices = res.T.values[ind_second]
+                dates = data_part.T.values[ind_first]
+                prices = data_part.T.values[ind_second]
                 ind_p = 0
-                while ind_p < res.T.shape[1]:
+                while ind_p < data_part.T.shape[1]:
                     if pd.isna(dates[ind_p]):
                         break
 
@@ -98,6 +101,16 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                         prices[ind_p],
                     )
                     ind_p += 1
+
+    async def load_prices_funds(self):
+        await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
+        res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
+        split_data = np.array_split(res, 8)
+
+        async with scoped_session() as session:
+            tasks = [self.process_data_part(part, session) for part in split_data]
+
+            await asyncio.gather(*tasks)
 
 
 class CurrenciesLoaderAdapter(CBRAdapter):
@@ -117,7 +130,7 @@ class CurrenciesLoaderAdapter(CBRAdapter):
     async def check_or_create_prices_currency(cls, session: AsyncSession, currency_name: str, date_price: datetime.date, price: float):
         prices_currency = await PricesCurrency.get_one_by_params(
             session,
-            (PricesCurrency.currency_name == currency_name, PricesCurrency.price_date == date_price),
+            (PricesCurrency.currencies_name == currency_name, PricesCurrency.price_date == date_price,),
         )
         if prices_currency is None:
             try:

@@ -32,5 +32,5 @@ class PricesSchemaResp(BaseModel):
         return round(v, 2)
 
     @field_validator('in_rub')
-    def price_check(cls, v):
+    def in_rub_check(cls, v):
         return round(v, 2)
