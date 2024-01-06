@@ -28,20 +28,25 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
     path_to_file_to_historical_dynamic = f'{path_to_file}/historical-dynamic.xls'
 
     @classmethod
-    async def create_prices_fund(cls, session: AsyncSession, ticker: str, date: datetime.date, price: float):
-        try:
-            await PricesFund.create(
-                session=session,
-                prices=PricesFundSchema(
-                    funds_ticker=ticker,
-                    price_date=date,
-                    price=price,
-                ),
-            )
-            await session.commit()
-        except IntegrityError as e:
-            await session.rollback()
-            pass  # TODO добавить лог что не получилось загрузить данное значение и описание ошибки
+    async def check_or_create_prices_fund(cls, session: AsyncSession, ticker: str, date_price: datetime.date, price: float):
+        prices_fund = await PricesFund.get_one_by_params(
+            session,
+            (PricesFund.funds_ticker == ticker, PricesFund.price_date == date_price),
+        )
+        if prices_fund is None:
+            try:
+                await PricesFund.create(
+                    session=session,
+                    prices=PricesFundSchema(
+                        funds_ticker=ticker,
+                        price_date=date_price,
+                        price=price,
+                    ),
+                )
+                await session.commit()
+            except IntegrityError as e:
+                await session.rollback()
+                pass  # TODO добавить лог что не получилось загрузить данное значение и описание ошибки
 
     @classmethod
     async def check_or_create_fund(cls, session: AsyncSession, ticker: str, currency: float):
@@ -63,7 +68,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                 price = res.T[ind].value
 
                 await self.check_or_create_fund(session, ticker, currency)
-                await self.create_prices_fund(session, ticker, date, price)
+                await self.check_or_create_prices_fund(session, ticker, date, price)
 
     async def full_load_prices_funds(self):
         await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
@@ -86,7 +91,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                     if pd.isna(dates[ind_p]):
                         break
 
-                    await self.create_prices_fund(
+                    await self.check_or_create_prices_fund(
                         session,
                         ticker,
                         datetime.strptime(dates[ind_p], '%d.%m.%Y').date(),
@@ -109,20 +114,25 @@ class CurrenciesLoaderAdapter(CBRAdapter):
         return list_first_last_date_currencies
 
     @classmethod
-    async def create_prices_currency(cls, session: AsyncSession, currency_name: str, date: datetime.date, price: float):
-        try:
-            await PricesCurrency.create(
-                session=session,
-                prices=PricesCurrencySchema(
-                    currency_name=currency_name,
-                    price_date=date,
-                    price=price,
-                ),
-            )
-            await session.commit()
-        except IntegrityError as e:
-            await session.rollback()
-            pass  # TODO добавить лог что не получилось загрузить данное значение и описание ошибки
+    async def check_or_create_prices_currency(cls, session: AsyncSession, currency_name: str, date_price: datetime.date, price: float):
+        prices_currency = await PricesCurrency.get_one_by_params(
+            session,
+            (PricesCurrency.currency_name == currency_name, PricesCurrency.price_date == date_price),
+        )
+        if prices_currency is None:
+            try:
+                await PricesCurrency.create(
+                    session=session,
+                    prices=PricesCurrencySchema(
+                        currency_name=currency_name,
+                        price_date=date_price,
+                        price=price,
+                    ),
+                )
+                await session.commit()
+            except IntegrityError as e:
+                await session.rollback()
+                pass  # TODO добавить лог что не получилось загрузить данное значение и описание ошибки
 
     async def load_all_prices_currency(self):
         async with scoped_session() as session:
@@ -135,7 +145,7 @@ class CurrenciesLoaderAdapter(CBRAdapter):
                 )
 
                 for price in prices_currency:
-                    await self.create_prices_currency(
+                    await self.check_or_create_prices_currency(
                         session,
                         currency.name,
                         datetime.strptime(price['CursDate'], '%Y-%m-%dT%H:%M:%S%z').date(),
@@ -149,7 +159,7 @@ class CurrenciesLoaderAdapter(CBRAdapter):
         async with scoped_session() as session:
             for price in prices_currency_response:
                 if price['VchCode'] in CurrenciesNames.get_attributes():
-                    await self.create_prices_currency(
+                    await self.check_or_create_prices_currency(
                         session,
                         price['VchCode'],
                         date_response,
