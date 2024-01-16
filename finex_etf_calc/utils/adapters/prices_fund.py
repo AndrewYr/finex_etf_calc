@@ -1,7 +1,7 @@
 from typing import Sequence, Any
 
 import sqlalchemy as sa
-from sqlalchemy import desc, Row
+from sqlalchemy import desc, Row, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finex_etf_calc.db.models.funds import PricesFund
@@ -25,10 +25,24 @@ class PricesFundAdapter(PricesFund):
         result = await session.execute(stmt)
         latest_price_date = result.scalar()
 
+        subquery = (
+            sa.select(
+                cls.funds_ticker,
+                func.max(cls.price_date).label("max_date")
+            )
+            .where(cls.funds_ticker.in_(funds_ticker_list))
+            .group_by(cls.funds_ticker)
+            .subquery()
+        )
+
         stmt = (
             sa.select(cls.price, cls.price_date, cls.funds_ticker)
-            .where((cls.funds_ticker.in_(funds_ticker_list)) & (cls.price_date == latest_price_date))
-            .with_only_columns(cls.price, cls.price_date, cls.funds_ticker)
+            .join(subquery, sa.and_(
+                cls.funds_ticker == subquery.c.funds_ticker,
+                cls.price_date == subquery.c.max_date
+            ))
+            .where(cls.price_date <= latest_price_date)
+            .order_by(desc(cls.price_date))
         )
         result = await session.execute(stmt)
         return result.all()

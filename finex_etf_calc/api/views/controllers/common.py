@@ -3,7 +3,7 @@ from abc import abstractmethod
 from fastapi import Depends
 from sqlalchemy.orm import sessionmaker
 
-from finex_etf_calc.db.engine import scoped_session
+from finex_etf_calc.db.engine import scoped_session, get_session
 
 
 class BaseController:

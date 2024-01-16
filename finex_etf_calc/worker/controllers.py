@@ -10,15 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finex_etf_calc.app.config import config
-from finex_etf_calc.db.engine import scoped_session
+from finex_etf_calc.db.engine import scoped_session, get_session
 from finex_etf_calc.db.models.funds import Funds, PricesFund, Currencies, PricesCurrency
 from finex_etf_calc.api.views.serializers.schemas import FundsSchema, PricesFundSchema, PricesCurrencySchema
 from finex_etf_calc.utils.constants import CurrenciesNames
 from finex_etf_calc.utils.integrations.finex_etf_adapter import FinexAdapter
 from finex_etf_calc.utils.integrations.cbr_adapter import CBRAdapter
-
-
-sem = asyncio.Semaphore(10)
 
 
 class PandasModel:
@@ -75,8 +72,8 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                 await self.check_or_create_fund(session, ticker, currency)
                 await self.check_or_create_prices_fund(session, ticker, date_res, price)
 
-    async def process_data_part(self, data_part, session):  # TODO переназвать функцию посмотреть как можно оптимизировать код
-        async with sem:
+    async def process_data_part(self, data_part):  # TODO переназвать функцию посмотреть как можно оптимизировать код
+        async with scoped_session() as session:
             ind = 0
             while ind < data_part.T.shape[0]:
                 ind_first = ind
@@ -105,12 +102,10 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
     async def load_prices_funds(self):
         await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
         res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
-        split_data = np.array_split(res, 8)
+        split_data = np.array_split(res, 4)
 
-        async with scoped_session() as session:
-            tasks = [self.process_data_part(part, session) for part in split_data]
-
-            await asyncio.gather(*tasks)
+        tasks = [self.process_data_part(part) for part in split_data]
+        await asyncio.gather(*tasks)
 
 
 class CurrenciesLoaderAdapter(CBRAdapter):

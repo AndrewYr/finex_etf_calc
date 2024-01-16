@@ -33,7 +33,10 @@ class GetDeals(BaseController):
             resp_actual_price_funds = await PricesFundAdapter.get_actual_price_funds(session, resp_funds_actual_count)
 
             resp_list = []
-            for i, j in zip(resp_funds_actual_count, resp_actual_price_funds):
+            for i, j in zip(
+                    sorted(resp_funds_actual_count, key=lambda x: x['funds_ticker']),
+                    sorted(resp_actual_price_funds, key=lambda x: x['funds_ticker']),
+            ):
                 actual_price_currency = await PricesCurrencyAdapter.last_price_currency_on_date(
                     session,
                     i['currency'],
