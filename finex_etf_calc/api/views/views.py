@@ -3,22 +3,24 @@ from fastapi import APIRouter, Depends
 
 from finex_etf_calc.api.views.controllers.deals import CreateDeals, GetDeals
 from finex_etf_calc.api.views.serializers.request import DealsSchemaReq
-from finex_etf_calc.api.views.serializers.response import DealsSchemaResp, PricesSchemaResp
+from finex_etf_calc.api.views.serializers.response import DealsSchemaResp, PricesSchemaResp, FundSchemaResp
 
 routes = APIRouter()
 
 
 @routes.get(
     '/prices',
-    response_model=t.List[PricesSchemaResp],
+    response_model=PricesSchemaResp,
     status_code=200,
     description='Получить актуальную сумму всех имеющихся фондов'
 )
 async def get_funds(
-        controller: GetDeals = Depends(GetDeals)
+        controller: GetDeals = Depends(GetDeals),
+        # TODO добавить в params валюту в которой выдавать результат
 ):
     # TODO добавить общий результат на какуюто определенную валюту с пересчетом допустим на рубли
-    return await controller.perform()
+    resp = await controller.perform()
+    return resp
 
 
 @routes.post(

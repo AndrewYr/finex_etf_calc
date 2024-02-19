@@ -21,5 +21,5 @@ class PricesCurrencyAdapter(PricesCurrency):
             )
             .group_by(cls.currencies_name, cls.price).order_by(sa.desc("max_price_date")).limit(1)
         ))
-        return res.first()
+        return res.all()
 

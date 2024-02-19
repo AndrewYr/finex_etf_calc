@@ -122,7 +122,13 @@ class CurrenciesLoaderAdapter(CBRAdapter):
         return list_first_last_date_currencies
 
     @classmethod
-    async def check_or_create_prices_currency(cls, session: AsyncSession, currency_name: str, date_price: datetime.date, price: float):
+    async def check_or_create_prices_currency(
+            cls,
+            session: AsyncSession,
+            currency_name: str,
+            date_price: datetime.date,
+            price: float,
+    ):
         prices_currency = await PricesCurrency.get_one_by_params(
             session,
             (PricesCurrency.currencies_name == currency_name, PricesCurrency.price_date == date_price,),

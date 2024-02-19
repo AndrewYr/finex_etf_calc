@@ -8,10 +8,9 @@ from finex_etf_calc.db.models.funds import Deals, Funds
 
 
 class DealsAdapter(Deals):
-    res_lst = []  # TODO переименовать
-
     @classmethod
     async def get_actual_count_funds(cls, session: AsyncSession) -> t.List[{}]:  # TODO определить структуру
+        res_lst = []
         res = (await session.execute(
             sa.select(
                 cls.funds_ticker,
@@ -36,6 +35,6 @@ class DealsAdapter(Deals):
                 'count': fund_count.sum,
                 'currency': fund_count.currencies_name,
             }
-            cls.res_lst.append(res_dict)
+            res_lst.append(res_dict)
 
-        return cls.res_lst
+        return res_lst

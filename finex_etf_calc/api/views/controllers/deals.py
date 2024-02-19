@@ -1,4 +1,5 @@
 import typing as t
+from datetime import datetime
 
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -40,11 +41,11 @@ class GetDeals(BaseController):
                 actual_price_currency = await PricesCurrencyAdapter.last_price_currency_on_date(
                     session,
                     i['currency'],
-                    j['price_date'],
+                    datetime.today(),
                 )
                 i.update(j)
                 i['result'] = j['price'] * i['count']
-                i['in_rub'] = i['result'] * actual_price_currency.price
+                i['in_rub'] = i['result'] * actual_price_currency[0].price
                 resp_list.append(i)
 
             return parse_obj_as(t.List[PricesFundSchema], resp_list)
