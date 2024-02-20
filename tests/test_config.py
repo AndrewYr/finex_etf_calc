@@ -42,4 +42,4 @@ def test_from_file_unable_attribute(mocker):
     try:
         config_class.from_file(filename)
     except Exception as e:
-        assert 'Unable to parse value for attribute APP_NAME. all values:' in e.args[0]
+        assert 'Unable value for attribute APP_NAME. all values:' in e.args[0]

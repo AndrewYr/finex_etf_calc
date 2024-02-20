@@ -39,7 +39,7 @@ class MagConfig:
                     value = self._get_value(attr, attr_type, info, params)
                     setattr(self, attr, value)
                 except Exception as ex:
-                    raise ValueError(f'Unable to parse value for attribute {attr}. All values: {params}') from ex
+                    raise ValueError(f'Unable value for attribute {attr}. All values: {params}') from ex
 
         for attr, value in info.items():
             if attr not in annotations and not isinstance(value, property):
