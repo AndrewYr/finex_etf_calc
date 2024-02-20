@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from finex_etf_calc.app.config import config
 
 async_engine = create_async_engine(
-    config['ASYNC_DB_URL'],
+    config.ASYNC_DB_URL,
     echo=True,
 )
 AsyncSessionMaker = async_sessionmaker(
@@ -18,7 +18,7 @@ AsyncSessionMaker = async_sessionmaker(
     expire_on_commit=False,
     class_=AsyncSession
 )
-logger = logging.getLogger(config['APP_NAME'])
+logger = logging.getLogger(config.APP_NAME)
 
 
 async def get_session() -> AsyncIterator[sessionmaker]:

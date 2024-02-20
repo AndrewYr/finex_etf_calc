@@ -20,9 +20,13 @@ asyncpg = "*"
 httpx = "*"
 pandas = "*"
 openpyxl = "*"
+"ruamel.yaml" = "*"
+coverage = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-mock = "*"
+yamlloader = "*"
 
 [requires]
 python_version = "3.11"

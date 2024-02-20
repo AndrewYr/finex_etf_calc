@@ -2,6 +2,8 @@ import os
 import datetime
 from httpx import AsyncClient
 
+from finex_etf_calc.utils.integrations.handlers import async_handle_http_errors
+
 
 class FinexAdapter:
     def __init__(self):
@@ -17,6 +19,7 @@ class FinexAdapter:
             pass  # TODO добавить информативный лог
         return False
 
+    @async_handle_http_errors
     async def load_file_from_url(self, url: str, path_to_file: str):
         if not self.check_date_file_today(path_to_file):
             async with self.client as client:

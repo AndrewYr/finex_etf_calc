@@ -42,13 +42,13 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = app_config['ALEMBIC_CONFIG']
+    url = app_config.ALEMBIC_CONFIG
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        version_table_schema=app_config['DB_SCHEMA'],
+        version_table_schema=app_config.DB_SCHEMA,
     )
 
     with context.begin_transaction():
@@ -62,13 +62,13 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = create_engine(app_config['ALEMBIC_CONFIG'])
+    connectable = create_engine(app_config.ALEMBIC_CONFIG)
 
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            version_table_schema=app_config['DB_SCHEMA'],
+            version_table_schema=app_config.DB_SCHEMA,
             include_schemas=True,
         )
 

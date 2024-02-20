@@ -2,9 +2,11 @@ import typing as t
 import datetime
 import xml.etree.ElementTree as ET
 from datetime import date
-from typing import Tuple, List
 
-from httpx import Client
+from httpx import Client, Response
+
+from finex_etf_calc.app.config import config
+from finex_etf_calc.utils.integrations.handlers import handle_http_errors
 
 
 class CBRAdapter:
@@ -63,24 +65,27 @@ class CBRAdapter:
           </soap:Body>
         </soap:Envelope>'''
 
-    def _request_to_cbr(self, req_body: str) -> str:  # TODO добавить проверку кода ответа
+    @staticmethod
+    def _headers_request_to_cbr() -> dict:
+        return {'content-type': 'text/xml'}
+
+    @handle_http_errors
+    def _request_to_cbr(self, req_body: str) -> Response:
         resp = self.client.post(
-            'https://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx',  # TODO перенески в конфиги
-            headers={
-                'content-type': 'text/xml',
-            },
+            config.CBR_URL,
+            headers=self._headers_request_to_cbr(),
             content=req_body,
         )
-        return resp.text
+        return resp
 
     def get_curs_dynamic(self, from_date: str, to_date: str, code_cbr: str) -> t.List[dict]:
         req_body = self._body_to_request_get_curs_dynamic_xml(from_date, to_date, code_cbr)
-        resp_text = self._request_to_cbr(req_body)
-        return self._xml_to_list(resp_text, 'ValuteCursDynamic')
+        resp = self._request_to_cbr(req_body)
+        return self._xml_to_list(resp.text, 'ValuteCursDynamic')
 
     def get_curs_on_date(self, on_date: str) -> tuple[list[dict], date]:
         req_body = self._body_to_request_get_curs_on_date_xml(on_date)
-        resp_text = self._request_to_cbr(req_body)
-        res = self._xml_to_list(resp_text, 'ValuteCursOnDate')
-        date_response = self._get_on_date_value(resp_text)
+        resp = self._request_to_cbr(req_body)
+        res = self._xml_to_list(resp.text, 'ValuteCursOnDate')
+        date_response = self._get_on_date_value(resp.text)
         return res, date_response

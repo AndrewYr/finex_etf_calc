@@ -89,7 +89,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String),
         sa.Column('description', sa.String),
         sa.Column('id', sa.Integer),
-        schema=config['DB_SCHEMA']
+        schema=config.DB_SCHEMA
     )
     op.bulk_insert(
         ttypes_deal,
@@ -111,7 +111,7 @@ def upgrade() -> None:
         sa.Column('code', sa.Integer),
         sa.Column('description', sa.String),
         sa.Column('id', sa.Integer),
-        schema=config['DB_SCHEMA']
+        schema=config.DB_SCHEMA
     )
     op.bulk_insert(
         tcurrencies,

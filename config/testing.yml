@@ -1,11 +1,5 @@
 APP_NAME: finex_etf_calc
 
-INIT_LOGGING: false
-DEBUG: false
-LOG_LEVEL: DEBUG
-
-SWAGGER_URL: ''
-
 DB_PG_NAME: postgres
 DB_SCHEMA: finex_etf_calc_db
 DB_NAME: finex_etf_calc_db
@@ -15,6 +9,9 @@ DB_PG_PASSWORD: finex_etf_calc
 DB_PG_HOST: localhost
 DB_PG_PORT: 5432
 
-FINEX_PRICE_ON_DAY_URL: 'https://api.finex-etf.ru/v1/fonds/nav.xlsx'
-FINEX_PRICE_HISTORY_URL: 'https://cdn.finexetf.com/historical-dynamic.xls'
-CBR_URL: ''
+FINEX_PRICE_ON_DAY_URL: 'https://some-url.ru'
+FINEX_PRICE_HISTORY_URL: 'https://some-url.ru'
+CBR_URL: 'https://some-url.ru'
+
+RABBITMQ_URLS:
+  - amqp://admin:admin@127.0.0.1:5672

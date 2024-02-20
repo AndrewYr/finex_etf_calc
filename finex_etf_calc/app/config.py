@@ -1,6 +1,6 @@
 import os
 
-from configloader import ConfigLoader
+from finex_etf_calc.app.utils import MagConfig
 
 ENVIRONMENT = os.environ['ENVIRONMENT'].upper()
 CONFIG_FILE = os.environ.get('CONFIG_FILE',
@@ -17,7 +17,7 @@ class Environment:
     TESTING = 'TESTING'
 
 
-class BaseConfig(ConfigLoader):
+class BaseConfig(MagConfig):
     ENVIRONMENT: str
     APP_NAME: str
 
@@ -25,10 +25,6 @@ class BaseConfig(ConfigLoader):
     def ENVIRONMENT(self):
         return str(ENVIRONMENT).upper()
 
-    INIT_LOGGING: bool = True
-    DEBUG: bool = False
-    LOG_LEVEL = 'INFO'
-    SWAGGER_URL: str
     README_PATH = README_PATH
     DB_PG_NAME: str
     DB_PG_USERNAME: str
@@ -38,6 +34,16 @@ class BaseConfig(ConfigLoader):
 
     DB_SCHEMA: str
     DB_NAME: str
+
+    FINEX_PRICE_ON_DAY_URL: str
+    FINEX_PRICE_HISTORY_URL: str
+    CBR_URL: str
+
+    RABBITMQ_URLS: list
+
+    @property
+    def CELERY_URLS(self):
+        return [f'{url.rstrip("/")}' for url in self.RABBITMQ_URLS]
 
     @property
     def ASYNC_DB_URL(self):
@@ -74,30 +80,9 @@ class LocalConfig(BaseConfig):
 
 
 config_class = {
-    Environment.LOCAL: LocalConfig(),
-    Environment.TESTING: TestingConfig(),
+    Environment.LOCAL: LocalConfig,
+    Environment.TESTING: TestingConfig,
 }.get(ENVIRONMENT.upper(), BaseConfig)
 
-config = ConfigLoader()
-config.update_from_yaml_file(file_path_or_obj=CONFIG_FILE)
-config.update(
-    {
-        'ASYNC_DB_URL': '{drivername}://{user}:{password}@{host}:{port}/{database}'.format(
-            drivername='postgresql+asyncpg',
-            user=config['DB_PG_USERNAME'],
-            password=config['DB_PG_PASSWORD'],
-            host=config['DB_PG_HOST'],
-            port=config['DB_PG_PORT'],
-            database=config['DB_PG_NAME'],
-        ),
-        'ALEMBIC_CONFIG': '{drivername}://{user}:{password}@{host}:{port}/{database}'.format(
-            drivername='postgresql+psycopg2',
-            user=config['DB_PG_USERNAME'],
-            password=config['DB_PG_PASSWORD'],
-            host=config['DB_PG_HOST'],
-            port=config['DB_PG_PORT'],
-            database=config['DB_PG_NAME'],
-        ),
-        'CELERY_URLS': ['amqp://admin:admin@127.0.0.1:5672']
-    },
-)
+
+config: BaseConfig = config_class.from_file(CONFIG_FILE)

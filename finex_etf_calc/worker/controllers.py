@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from finex_etf_calc.app.config import config
-from finex_etf_calc.db.engine import scoped_session, get_session
+from finex_etf_calc.db.engine import scoped_session
 from finex_etf_calc.db.models.funds import Funds, PricesFund, Currencies, PricesCurrency
 from finex_etf_calc.api.views.serializers.schemas import FundsSchema, PricesFundSchema, PricesCurrencySchema
 from finex_etf_calc.utils.constants import CurrenciesNames
@@ -60,7 +60,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
             )
 
     async def update_prices_funds(self):
-        await self.load_file_from_url(config['FINEX_PRICE_ON_DAY_URL'], self.path_to_file_to_day)
+        await self.load_file_from_url(config.FINEX_PRICE_ON_DAY_URL, self.path_to_file_to_day)
         res = self.get_file_by_name(self.path_to_file_to_day)
         async with scoped_session() as session:
             for ind in res.T:
@@ -100,7 +100,7 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                     ind_p += 1
 
     async def load_prices_funds(self):
-        await self.load_file_from_url(config['FINEX_PRICE_HISTORY_URL'], self.path_to_file_to_historical_dynamic)
+        await self.load_file_from_url(config.FINEX_PRICE_HISTORY_URL, self.path_to_file_to_historical_dynamic)
         res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
         split_data = np.array_split(res, 4)
 

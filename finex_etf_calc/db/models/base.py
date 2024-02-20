@@ -11,7 +11,7 @@ from finex_etf_calc.app.config import config
 
 Model = declarative_base()
 
-Model.metadata.schema = config['DB_SCHEMA']
+Model.metadata.schema = config.DB_SCHEMA
 
 
 # TODO посмотреть как добавить ABC в Base
