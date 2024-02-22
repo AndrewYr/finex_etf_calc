@@ -71,12 +71,11 @@ class CBRAdapter:
 
     @handle_http_errors
     def _request_to_cbr(self, req_body: str) -> Response:
-        resp = self.client.post(
+        return self.client.post(
             config.CBR_URL,
             headers=self._headers_request_to_cbr(),
             content=req_body,
         )
-        return resp
 
     def get_curs_dynamic(self, from_date: str, to_date: str, code_cbr: str) -> t.List[dict]:
         req_body = self._body_to_request_get_curs_dynamic_xml(from_date, to_date, code_cbr)

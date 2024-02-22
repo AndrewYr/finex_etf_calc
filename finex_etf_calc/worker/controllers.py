@@ -72,6 +72,14 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                 await self.check_or_create_fund(session, ticker, currency)
                 await self.check_or_create_prices_fund(session, ticker, date_res, price)
 
+    async def load_prices_funds(self):
+        await self.load_file_from_url(config.FINEX_PRICE_HISTORY_URL, self.path_to_file_to_historical_dynamic)
+        res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
+        split_data = np.array_split(res, 4)
+
+        tasks = [self.process_data_part(part) for part in split_data]
+        await asyncio.gather(*tasks)
+
     async def process_data_part(self, data_part):  # TODO переназвать функцию посмотреть как можно оптимизировать код
         async with scoped_session() as session:
             ind = 0
@@ -98,14 +106,6 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
                         prices[ind_p],
                     )
                     ind_p += 1
-
-    async def load_prices_funds(self):
-        await self.load_file_from_url(config.FINEX_PRICE_HISTORY_URL, self.path_to_file_to_historical_dynamic)
-        res = self.get_file_by_name(self.path_to_file_to_historical_dynamic)
-        split_data = np.array_split(res, 4)
-
-        tasks = [self.process_data_part(part) for part in split_data]
-        await asyncio.gather(*tasks)
 
 
 class CurrenciesLoaderAdapter(CBRAdapter):

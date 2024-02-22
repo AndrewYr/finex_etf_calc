@@ -10,8 +10,8 @@ app.conf.beat_schedule = {
     'run-update-etf-price': {
         'task': 'tasks.update_etf_price_today',
         'schedule': crontab(
-            hour='00',
-            minute='05',
+            hour='12',
+            minute='51',
         )
     },
     'run-update-prices-currency': {

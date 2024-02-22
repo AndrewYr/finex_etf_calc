@@ -27,6 +27,7 @@ coverage = "*"
 pytest = "*"
 pytest-mock = "*"
 yamlloader = "*"
+pytest-asyncio = "*"
 
 [requires]
 python_version = "3.11"
