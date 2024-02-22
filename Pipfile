@@ -28,6 +28,7 @@ pytest = "*"
 pytest-mock = "*"
 yamlloader = "*"
 pytest-asyncio = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.11"

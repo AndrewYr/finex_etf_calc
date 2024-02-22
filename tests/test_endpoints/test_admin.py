@@ -1,5 +1,5 @@
 from httpx import AsyncClient
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import patch, Mock
 
 
 async def test_health_check(async_client: AsyncClient):

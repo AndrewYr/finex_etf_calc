@@ -1,0 +1,17 @@
+[run]
+data_file = ./tests/coverage/.coverage
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if __name__ == .__main__.:
+    def logger
+    def build_spec.*:
+    def register_openapi
+    except ConnectionRefusedError
+    app\.redis = StrictRedisCluster
+    if openapi
+
+[html]
+directory = ./tests/coverage/html/

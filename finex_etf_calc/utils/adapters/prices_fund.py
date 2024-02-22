@@ -41,14 +41,16 @@ class PricesFundAdapter(PricesFund):
                 cls.funds_ticker == subquery.c.funds_ticker,
                 cls.price_date == subquery.c.max_date
             ))
-            .where(cls.price_date <= latest_price_date)
             .order_by(desc(cls.price_date))
         )
+        if latest_price_date:
+            stmt.where(cls.price_date <= latest_price_date)
+
         result = await session.execute(stmt)
         return result.all()
 
     @classmethod
-    async def get_actual_price_funds(cls, session: AsyncSession, list_funds):  # TODO добавить описание ответа
+    async def get_actual_price_funds(cls, session: AsyncSession, list_funds) -> list:  # TODO добавить описание ответа
         resp_price = await cls.get_actual_price_by_funds_tickers(session, [_['funds_ticker'] for _ in list_funds])
         return [
             {
