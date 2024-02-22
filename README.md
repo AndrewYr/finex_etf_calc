@@ -10,7 +10,7 @@
 | Наименование        | Значение                                                                                           |
 |---------------------|----------------------------------------------------------------------------------------------------|
 | Разработчик         | AndrewYr                                                                                           |
-| Цель                | Сервис для хранения информации по активам фондов FINEX, с формированием актуальной цены на основе https://finex-etf.ru/calc/nav |
+| Цель                | Сервис предназначенный для хранения информации о сделках (покупка/продажа) finex с предоставлением информации актуального количества и цены, основан на https://finex-etf.ru/calc/nav |
 | Язык реализации     | Python 3.11                                                                                        |
 
 </details>
@@ -22,13 +22,19 @@
   <summary>Показать</summary>
 
 * Спецификация OpenAPI v3.0.2 находится по относительному адресу `/spec/`
-* Swagger UI v3 находится по относительному адресу `/docs/` и `/redoc/`
+* Swagger UI v3 находится по относительному адресу `/docs/`
 
 </details>
 
 
 ## Взаимодействие со сторонними сервисами
+<details>
+  <summary>Показать</summary>
 
+* https://finex-etf.ru/
+* https://www.cbr.ru
+
+</details>
 * --------------------
 
 
@@ -43,7 +49,7 @@
 
     $ cd finex_etf_calc
     $ pyenv virtualenv 3.11.4 finex_etf_calc // создание виртуального окружения для проекта
-    $ pyenv local pm-dsl-manager // активация виртуального окружения для текущей папки
+    $ pyenv local finex_etf_calc // активация виртуального окружения для текущей папки
 
 Установить необходимые пакеты:
 
@@ -53,8 +59,7 @@
 
 Важно: 
 перед запуском внутри Docker, нужно обязательно выполнить команду `pipenv install`, 
-чтобы сформировался Pipfile.lock, именно из этого файла должна браться информация о зависимостях при сборке докер образа. 
-Также необходимо добавить этот файл в индекс git-а.
+чтобы сформировался Pipfile.lock, именно из этого файла должна браться информация о зависимостях при сборке докер образа.
 
 </details>
 
@@ -65,8 +70,6 @@
 
     $ cp docker-compose.yml.sample docker-compose.yml // не добавлять docker-compose.yml под систему контроля версий, там хранятся только локальные настройки проекта
     $ docker-compose up
-
-При проблемах доступа докера к внутренним сетевым ресурсам использовать это решение: [https://confluence.rt.ru/x/jFEBDQ](https://confluence.rt.ru/x/jFEBDQ)
 
 </details>
 
@@ -79,11 +82,11 @@
 
 Оценка покрытия тестами 
 
-    $ pytest --cov=pm_dsl_manager tests/
+    $ pytest --cov=finex_etf_calc tests/
 
 Детальный отчет покрытия
 
-    $ python -m pytest -vvs --cov=pm_dsl_manager --cov-branch --cov-report=html:tests/coverage.html
+    $ python -m pytest -vvs --cov=finex_etf_calc --cov-branch --cov-report=html:tests/coverage.html
 
 </details>
 

@@ -35,11 +35,8 @@ class MagConfig:
 
         for attr, attr_type in annotations.items():
             if attr not in info or not isinstance(info[attr], property):
-                try:
-                    value = self._get_value(attr, attr_type, info, params)
-                    setattr(self, attr, value)
-                except Exception as ex:
-                    raise ValueError(f'Unable value for attribute {attr}. All values: {params}') from ex
+                value = self._get_value(attr, attr_type, info, params)
+                setattr(self, attr, value)
 
         for attr, value in info.items():
             if attr not in annotations and not isinstance(value, property):

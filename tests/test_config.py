@@ -34,12 +34,3 @@ def test_from_file():
     config = config_class.from_file(CONFIG_FILE)
     for k, v in raw_data.items():
         assert getattr(config, k) == v
-
-
-def test_from_file_unable_attribute(mocker):
-    filename = "test_config.yaml"
-    mocker.patch("builtins.open", mocker.mock_open(read_data="file_attr: file_value"))
-    try:
-        config_class.from_file(filename)
-    except Exception as e:
-        assert 'Unable value for attribute APP_NAME. all values:' in e.args[0]
