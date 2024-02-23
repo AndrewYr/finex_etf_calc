@@ -31,4 +31,5 @@ async def create_deals(
         deals: t.List[DealsSchemaReq],
         controller: CreateDeals = Depends(CreateDeals)
 ):
-    return [deal async for deal in controller.perform(deals)]
+    resp = [deal async for deal in controller.perform(deals)]
+    return resp

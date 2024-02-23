@@ -15,16 +15,18 @@ async def test_get_actual_prices_response_empty(
 
 async def test_create_deals(
         async_client: AsyncClient,
-        db_session_with_funds,
+        db_session,
 ):
     response = await async_client.post(
         '/v1/deals',
-        json={
-            'typeDeal': {
-                'name': 'buy',
-            },
-            'funds': '',
-        },
+        json=[
+            {
+                'typeDeal': {
+                    'name': 'buy',
+                },
+                'funds': {},
+            }
+        ],
     )
     assert response.status_code == 201
     assert response.json() == {

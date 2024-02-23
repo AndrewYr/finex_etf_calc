@@ -1,15 +1,15 @@
-import pytest
 from httpx import AsyncClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from alembic.command import downgrade, upgrade
 
-from finex_etf_calc.api.views.serializers.schemas import FundsSchema
 from finex_etf_calc.app.config import config
 from finex_etf_calc.app.fastapi import create_app
-from finex_etf_calc.db.engine import scoped_session
-from finex_etf_calc.db.models import Base, Funds
+from finex_etf_calc.db.models import Base
 
-ALEMBIC_CONFIG = 'alembic.ini'
+
+from sqlalchemy import create_engine
+from alembic.config import Config as AlembicConfig
+import pytest
 
 
 @pytest.fixture
@@ -31,10 +31,12 @@ def db_engine():
 
 @pytest.fixture(scope="session")
 def apply_migrations(db_engine):
-    Base.metadata.create_all(bind=db_engine)
-    yield
-    Base.metadata.drop_all(bind=db_engine)
+    alembic_cfg = AlembicConfig("alembic.ini")
+    alembic_cfg.attributes['configure_logger'] = False
 
+    upgrade(alembic_cfg, 'head')
+    yield 'on head'
+    downgrade(alembic_cfg, 'base')
 
 @pytest.fixture(scope="function")
 def db_session(db_engine, apply_migrations):
