@@ -8,6 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
 
 from finex_etf_calc.app.config import config
 from finex_etf_calc.db.engine import scoped_session
@@ -52,12 +53,13 @@ class FundsLoaderAdapter(PandasModel, FinexAdapter):
 
     @classmethod
     async def check_or_create_fund(cls, session: AsyncSession, ticker: str, currency: float):
-        fund = await Funds.get_one_by_params(session, (Funds.ticker == ticker,))
-        if fund is None:
-            await Funds.create(
-                session=session,
-                funds=FundsSchema(ticker=ticker, currencies_name=currency),
-            )
+        stmt = insert(Funds).values(
+            ticker=ticker,
+            currencies_name=currency,
+        ).on_conflict_do_nothing(index_elements=[Funds.ticker])
+
+        await session.execute(stmt)
+        await session.commit()
 
     async def update_prices_funds(self):
         await self.load_file_from_url(config.FINEX_PRICE_ON_DAY_URL, self.path_to_file_to_day)

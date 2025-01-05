@@ -1,6 +1,6 @@
 APP_NAME: finex_etf_calc
 
-DB_PG_NAME: postgres
+DB_PG_NAME: finex_etf_calc_db
 DB_SCHEMA: finex_etf_calc_db
 DB_NAME: finex_etf_calc_db
 

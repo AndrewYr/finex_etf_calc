@@ -109,6 +109,7 @@ def upgrade() -> None:
         meta,
         sa.Column('name', sa.String),
         sa.Column('code', sa.Integer),
+        sa.Column('code_cbr', sa.String),
         sa.Column('description', sa.String),
         sa.Column('id', sa.Integer),
         schema=config.DB_SCHEMA
@@ -125,6 +126,7 @@ def upgrade() -> None:
             {
                 'name': 'RUB',
                 'code': 643,
+                'code_cbr': '',
                 'description': 'Российский рубль'
             },
             {

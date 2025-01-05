@@ -1,5 +1,7 @@
 version: '1'
 
+x-project-name: &project-name "finex_fastapi"
+
 services:
   postgres:
     image: postgres
@@ -24,3 +26,9 @@ services:
     ports:
       - 15672:15672
       - 5672:5672
+
+
+#  FXUS,1,64.07,2022-01-14,2530
+#  FXCN,1,3054.5,2022-01-14,19
+#  FXDM,1,82.59,2022-01-14,1525
+#  FXKZ,1,322.9,2022-01-14,49
